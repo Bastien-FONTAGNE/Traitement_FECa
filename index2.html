@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traitement FEC</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #sidebar {
+            width: 10%;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #2b3644;
+            color: white;
+            overflow-x: hidden;
+            padding-top: 20px;
+        }
+        #sidebar h2 {
+            text-align: center;
+        }
+        #sidebar a {
+            padding: 10px 15px;
+            text-decoration: none;
+            font-size: 20px;
+            color: white;
+            display: block;
+        }
+        #sidebar a:hover {
+            background-color: #575757;
+        }
+        #main {
+            margin-left: 10%;
+            padding: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .form-section {
+            margin-top: 20px;
+        }
+        .form-section input[type="text"],
+        .form-section input[type="file"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .form-section button {
+            padding: 10px 20px;
+            background-color: #04AA6D;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .form-section button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            table-layout: fixed;
+        }
+        
+        th, td {
+            padding: 5px;
+            text-align: left;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+        
+        th {
+            background-color: #f4f4f4;
+            color: black;
+            border-bottom: 2px solid #2b3644;
+            font-weight: bold;
+        }
+        
+        td {
+            background-color: #ffffff;
+            border: 2px solid black;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        tr:hover {
+            background-color: #e6e6e6;
+        }
+        
+        .error {
+            background-color: #ffdddd;
+        }
+        
+        input[type="text"] {
+            border: none;
+            background-color: transparent;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 5px;
+        }
+        
+        .actions {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .actions button {
+            margin: 2px 0;
+            padding: 1px;
+            font-size: 12px;
+            background-color: #04AA6D;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        
+        .actions button:hover {
+            background-color: #45a049;
+        }
+        
+        .resizable {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 5px;
+            cursor: col-resize;
+            user-select: none;
+            background-color: #f4f4f4;
+        }
+        
+        .search-row input {
+            width: 100%;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+        
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>Traitement FEC</h2>
+        <a href="#" id="importChoice">Importer un FEC</a>
+        <a href="#" id="exportChoice">Exporter un FEC</a>
+        <a href="#" id="verifChoice">Vérifier le FEC</a>
+    </div>
+    <div id="main">
+        <div id="import" class="form-section hidden">
+            <h3>Importer un fichier</h3>
+            <input type="file" id="file-pathImport" required>
+            <fieldset>
+                <legend>Format du fichier:</legend>
+                <input type="radio" id="formatImportText" name="format" value="text" checked>
+                <label for="formatImportText">Text</label>
+                <input type="radio" id="formatImportCsv" name="format" value="csv">
+                <label for="formatImportCsv">CSV</label>
+            </fieldset>
+            <fieldset id="choiceDelimiterImport">
+                <legend>Délimiteur:</legend>
+                <input type="radio" id="delimiterImportTab" name="delimiter" value="tab" checked>
+                <label for="delimiterImportTab">Tab</label>
+                <input type="radio" id="delimiterImportSemicolon" name="delimiter" value=";">
+                <label for="delimiterImportSemicolon">Point-virgule</label>
+                <input type="radio" id="delimiterPipe" name="delimiter" value="|">
+                <label for="delimiterPipe">Pipe</label>
+            </fieldset>
+            <button type="button" id="submit-import">Importer le fichier</button>
+            <button type="button" id="return">Retour</button>
+        </div>
+        <div id="export" class="form-section hidden">
+            <h3>Exporter un fichier</h3>
+            <fieldset>
+                <legend>Format du fichier:</legend>
+                <input type="radio" id="formatExportText" name="formatExport" value="text" checked>
+                <label for="formatExportText">Text</label>
+                <input type="radio" id="formatExportCsv" name="formatExport" value="csv">
+                <label for="formatExportCsv">CSV</label>
+            </fieldset>
+            <input type="text" id="exportName" placeholder="Nom du fichier exporté" required>
+            <button type="button" id="submit-export">Exporter le fichier</button>
+            <button type="button" id="returnE">Retour</button>
+        </div>
+        <div id="verif" class="form-section hidden">
+            <h3>Vérification des erreurs</h3>
+            <div id="result"></div>
+        </div>
+        <div id="error" class="form-section hidden">
+            <h3>Erreur</h3>
+            <div id="error-message"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = `http://localhost:3000`;
+        
+        const expectedColumns = [
+        "JournalCode", "JournalLib", "EcritureNum", "EcritureDate", "CompteNum",
+        "CompteLib", "CompAuxNum", "CompAuxLib", "PieceRef", "PieceDate",
+        "EcritureLib", "Debit", "Credit", "EcritureLet", "DateLet",
+        "ValidDate", "Montantdevise", "Idevise"
+        ];
+        
+        document.getElementById('importChoice').addEventListener('click', () => {
+            showSection('import');
+        });
+        
+        document.getElementById('exportChoice').addEventListener('click', () => {
+            showSection('export');
+        });
+        
+        document.getElementById('verifChoice').addEventListener('click', () => {
+            showSection('verif');
+            verifyFEC();
+        });
+        
+        document.getElementById('return').addEventListener('click', () => {
+            showSection(null);
+        });
+        
+        document.getElementById('returnE').addEventListener('click', () => {
+            showSection(null);
+        });
+        
+        document.getElementById('submit-import').addEventListener('click', () => {
+            importFile();
+        });
+        
+        document.getElementById('submit-export').addEventListener('click', () => {
+            exportFile();
+        });
+        
+        function showSection(section) {
+            document.getElementById('import').classList.add('hidden');
+            document.getElementById('export').classList.add('hidden');
+            document.getElementById('verif').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+            if (section) {
+                document.getElementById(section).classList.remove('hidden');
+            }
+        }
+        
+        function importFile() {
+            const inputfile = document.getElementById('file-pathImport');
+            const inputformat = document.querySelector('input[name="format"]:checked').value;
+            const inputdelimiter = document.querySelector('input[name="delimiter"]:checked').value;
+            const fichier = inputfile.files[0];
+            
+            if (!fichier) {
+                showError("Veuillez choisir un fichier pour l'importation");
+                return;
+            }
+            
+            const data = new FormData();
+            data.append('file-path', fichier);
+            data.append('format', inputformat);
+            data.append('delimiter', inputdelimiter);
+            
+            fetch(API_URL + '/import', {
+                method: 'POST',
+                body: data
+            })
+            .then(response => response.json())
+            .then(responseData => {
+                if (responseData.status === "ok") {
+                    showSection(null);
+                } else {
+                    showError("Une erreur est survenue lors de l'importation.");
+                }
+            })
+            .catch(error => {
+                showError("Erreur: " + error.message);
+            });
+        }
+        
+        function exportFile() {
+            const format = document.querySelector('input[name="formatExport"]:checked').value;
+            const name = document.getElementById('exportName').value;
+            
+            if (!name) {
+                showError("Veuillez entrer un nom de fichier.");
+                return;
+            }
+            
+            const data = { format };
+            
+            fetch(API_URL + '/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors de l\'exportation.');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `${name}.${format === 'text' ? 'txt' : 'csv'}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                showSection(null);
+            })
+            .catch(error => {
+                showError("Erreur: " + error.message);
+            });
+        }
+        
+        function verifyFEC() {
+            fetch(API_URL + '/verify')
+            .then(response => response.json())
+            .then(responseData => {
+                console.log("Données reçues du serveur : ", responseData);
+                if (responseData.result) {
+                    displayVerificationResults(responseData.result);
+                }
+                else {
+                    showError("Les données de résultat sont manquantes.")
+                }
+                
+                
+                const ecritureNumsWithDates = {};
+                
+                
+                const duplicateEcritureNums = Object.entries(ecritureNumsWithDates)
+                .filter(([, dates]) => dates.length > 1)
+                .map(([ecritureNum, dates]) => ({ ecritureNum, dates }));
+                
+                if (duplicateEcritureNums.length > 0) {
+                    const errorMessage = 'Erreur: Des écriturenum ont plusieurs dates associées:\n';
+                    duplicateEcritureNums.forEach(({ ecritureNum, dates }) => {
+                        errorMessage += `- Écriture numéro ${ecritureNum} a les dates suivantes: ${dates.join(', ')}\n`;
+                    });
+                    alert(errorMessage);
+                }
+            })
+            .catch(error => {
+                showError("Erreur: " + error.message);
+            });
+        }
+        
+        function displayVerificationResults(result) {
+            console.log("Données reçues pour l'affichage :", result);  
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            
+            if (result.errors.includes("Le fichier FEC est correct.")) {
+                resultDiv.innerHTML = `<p class="success">${result.errors.join('<br>')}</p>`;
+                return;
+            }
+            
+            resultDiv.innerHTML = `<p class="error">${result.errors.join('<br>')}</p>`;
+            
+            if (result.linesWithErrors && result.linesWithErrors.length > 0) {
+                const table = document.createElement('table');
+                table.id = "resultsTable";
+                const header = table.insertRow();
+                expectedColumns.forEach(column => {
+                    const cell = document.createElement('th');
+                    cell.textContent = column;
+                    cell.classList.add('wide-column', 'resizable');
+                    const resizer = document.createElement('div');
+                    resizer.classList.add('resizer');
+                    cell.appendChild(resizer);
+                    header.appendChild(cell);
+                });
+                const actionsCell = document.createElement('th');
+                actionsCell.textContent = "Actions";
+                actionsCell.classList.add('wide-column', 'resizable');
+                const resizer = document.createElement('div');
+                resizer.classList.add('resizer');
+                actionsCell.appendChild(resizer);
+                header.appendChild(actionsCell);
+                
+                const searchRow = table.insertRow();
+                expectedColumns.forEach(() => {
+                    const searchCell = document.createElement('td');
+                    const searchInput = document.createElement('input');
+                    searchInput.type = 'text';
+                    searchInput.placeholder = 'Rechercher...';
+                    searchInput.addEventListener('input', filterTable);
+                    searchCell.appendChild(searchInput);
+                    searchRow.appendChild(searchCell);
+                });
+                const actionsSearchCell = document.createElement('td');
+                searchRow.appendChild(actionsSearchCell);
+                
+                result.linesWithErrors.forEach(({ lineNumber, line, errors }) => {
+                    const row = table.insertRow();
+                    row.classList.add('error');
+                    const columns = line.split(';');
+                    
+                    columns.forEach(column => {
+                        const cell = row.insertCell();
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = column;
+                        input.classList.add('wide-column');
+                        cell.appendChild(input);
+                    });
+                    
+                    const actionsCell = row.insertCell();
+                    const actionsContainer = document.createElement('div');
+                    actionsContainer.classList.add('actions');
+                    
+                    const showErrorsButton = document.createElement('button');
+                    showErrorsButton.textContent = 'Afficher les erreurs';
+                    showErrorsButton.onclick = () => {
+                        alert(errors.join('\n'));
+                    };
+                    actionsContainer.appendChild(showErrorsButton);
+                    
+                    const correctButton = document.createElement('button');
+                    correctButton.textContent = 'Corriger';
+                    correctButton.onclick = () => correctLine(row, lineNumber);
+                    actionsContainer.appendChild(correctButton);
+                    
+                    actionsCell.appendChild(actionsContainer);
+                });
+                
+                resultDiv.appendChild(table);
+                adjustColumnWidths(table);
+                makeColumnsResizable(table);
+            } else {
+                resultDiv.innerHTML += `<p class="error">Aucune ligne avec des erreurs trouvée.</p>`;
+            }
+        }
+        
+        
+        
+        function adjustColumnWidths(table) {
+            const colWidths = [];
+            const rows = table.rows;
+            
+            for (let row of rows) {
+                for (let i = 0; i < row.cells.length; i++) {
+                    const cell = row.cells[i];
+                    const contentWidth = getTextWidth(cell.textContent.trim(), '14px Arial');
+                    colWidths[i] = Math.max(colWidths[i] || 0, contentWidth);
+                }
+            }
+            
+            for (let i = 0; i < colWidths.length; i++) {
+                const width = colWidths[i] + 20;  
+                for (let row of rows) {
+                    row.cells[i].style.width = `${width}px`;
+                }
+            }
+        }
+        
+        function getTextWidth(text, font) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = font;
+            const metrics = context.measureText(text);
+            return metrics.width;
+        }
+        
+        function makeColumnsResizable(table) {
+            const resizers = table.querySelectorAll('.resizer');
+            let startX, startWidth;
+            
+            resizers.forEach(resizer => {
+                resizer.addEventListener('mousedown', function(e) {
+                    startX = e.pageX;
+                    startWidth = e.target.parentElement.offsetWidth;
+                    document.addEventListener('mousemove', resizeColumn);
+                    document.addEventListener('mouseup', stopResize);
+                });
+                
+                function resizeColumn(e) {
+                    const newWidth = startWidth + (e.pageX - startX);
+                    resizer.parentElement.style.width = `${newWidth}px`;
+                }
+                
+                function stopResize() {
+                    document.removeEventListener('mousemove', resizeColumn);
+                    document.removeEventListener('mouseup', stopResize);
+                }
+            });
+        }
+        
+        function filterTable(event) {
+            const input = event.target;
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById('resultsTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 2; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                const cellIndex = input.parentElement.cellIndex;
+                const cell = cells[cellIndex];
+                if (cell) {
+                    const cellText = cell.querySelector('input').value.toLowerCase();
+                    if (cellText.indexOf(filter) > -1) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            }
+        }
+        
+        async function correctLine(row, lineNumber) {
+            const inputs = row.querySelectorAll('input');
+            const correctedLine = Array.from(inputs).map(input => input.value).join(';');
+            
+            const response = await fetch(`${API_URL}/correct-line`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ lineNumber, correctedLine })
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                verifyFEC();  // Re-verify to get the updated and sorted results
+            } else {
+                alert(result.error);
+            }
+        }
+        
+        
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            const errorMessageDiv = document.getElementById('error-message');
+            errorMessageDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        document.querySelectorAll('input[name="format"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (document.getElementById('formatImportCsv').checked) {
+                    document.getElementById('choiceDelimiterImport').classList.add('hidden');
+                } else {
+                    document.getElementById('choiceDelimiterImport').classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

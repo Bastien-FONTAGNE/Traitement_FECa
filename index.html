@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            color: white;
+        }
+        
+        div#sidebar {
+            width: 10%;
+            height: 100%;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            left: 0;
+            background-color: #2b3644;
+            overflow-x: hidden;
+            padding-top: 20px;
+        }
+        
+        #choice h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.6em;
+        }
+        
+        #choice a {
+            padding: 6px 8px 6px 16px;
+            text-decoration: none;
+            font-size: 25px;
+            color: white;
+            display: block;
+        }
+        
+        div#export, div#import {
+            display: none;
+            width: 90%;
+        }
+        
+        button {
+            background-color: #04AA6D;
+            color: black;
+            text-align: center;
+            padding: 5px;
+            display: inline-block;
+            font-size: 12px;
+        }
+        
+        .input, .field {
+            display: block;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #main {
+            margin-left: 8.9%;
+            padding: 20px;
+            color: black;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 5px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: black;
+        }
+        
+        #debit {
+            color: black;
+            margin-left: 10px;
+        }
+        
+        input[type="text"] {
+            display: block;
+            margin-top: 10px;
+            padding: 5px;
+            font-size: 14px;
+            width: 80%;
+            color: black;
+        }
+        
+        .error {
+            color: red;
+        }
+        
+        .success {
+            color: green;
+        }
+        
+        .error-line {
+            background-color: #ffdddd;
+            
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div id="choice">
+            <h2>Traitement FEC</h2>
+            <a id="importChoice">Importer un fichier</a>
+            <a id="exportChoice">Exporter un fichier</a>
+            <a id="verifChoice">Vérifier le fichier FEC</a>
+        </div>
+        <div id="import">
+            <fieldset class="field">
+                <legend>Selectionner le format de fichier:</legend>
+                <input type="radio" id="formatImportText" name="format" value="text" checked/>
+                <label for="formatImportText">text</label>
+                <input type="radio" id="formatImportCsv" name="format" value="csv"/>
+                <label for="formatImportCsv">csv</label>
+            </fieldset>
+            <fieldset class="field" id="choiceDelimiterImport">
+                <legend>Selectionner le delimiter:</legend>
+                <input type="radio" id="delimiterImportTab" name="delimiter" value="tab" checked/>
+                <label for="delimiterImportTab">tab</label>
+                <input type="radio" id="delimiterImportSemicolon" name="delimiter" value=";"/>
+                <label for="delimiterImportSemicolon">;</label>
+                <input type="radio" id="delimiter6" name="delimiter" value="|"/>
+                <label for="delimiter6">|</label>
+            </fieldset>
+            <input type="file" id="file-pathImport" class="input" name="file-path" required>
+            <button type="submit" id="submit-import">Importer le fichier</button>
+            <button type="button" id="return">Retour</button>
+        </div>
+        <div id="export">
+            <fieldset class="field">
+                <legend>En quel format voulez-vous l'exporter ?</legend>
+                <input type="radio" id="formatExportText" name="formatExport" value="text" checked/>
+                <label for="formatExportText">text</label>
+                <input type="radio" id="formatExportCsv" name="formatExport" value="csv"/>
+                <label for="formatExportCsv">csv</label>
+            </fieldset>
+            <input type="text" id="exportName" name="fileName" placeholder="Nom du fichier exporté" required>
+            <button type="submit" id="submit-export">Exporter le fichier</button>
+            <button type="button" id="returnE">Retour</button>
+        </div>
+        <div id="error"></div>
+    </div>
+    <div id="main">
+        <div id="debit">
+            
+        </div>
+    </div>
+    <script>
+        const API_URL = "http://localhost:3000";
+        
+        const choiceDiv = document.getElementById('choice');
+        const importDiv = document.getElementById('import');
+        const exportDiv = document.getElementById('export');
+        const verifChoice = document.getElementById('verifChoice');
+        const choiceDelimiterImport = document.getElementById('choiceDelimiterImport');
+        const formatImportCsv = document.getElementById('formatImportCsv');
+        const formatImportText = document.getElementById('formatImportText');
+        const errorDiv = document.getElementById('error');
+        const expectedColumns = [
+        "JournalCode", "JournalLib", "EcritureNum", "EcritureDate", "CompteNum",
+        "CompteLib", "CompAuxNum", "CompAuxLib", "PieceRef", "PieceDate",
+        "EcritureLib", "Debit", "Credit", "EcritureLet", "DateLet",
+        "ValidDate", "Montantdevise", "Idevise"
+        ];
+        
+        document.getElementById('importChoice').addEventListener('click', () => {
+            choiceDiv.style.display = 'none';
+            importDiv.style.display = 'block';
+            document.getElementById('debit').innerHTML = '';
+        });
+        
+        document.getElementById('exportChoice').addEventListener('click', () => {
+            choiceDiv.style.display = 'none';
+            exportDiv.style.display = 'block';
+            document.getElementById('debit').innerHTML = '';
+        });
+        
+        document.getElementById('submit-import').addEventListener('click', function(event) {
+            event.preventDefault();
+            
+            const inputfile = document.getElementById('file-pathImport');
+            const inputformat = document.querySelector('input[name="format"]:checked');
+            const inputdelimiter = document.querySelector('input[name="delimiter"]:checked');
+            let fichier = inputfile.files[0];
+            let format = inputformat.value;
+            let delimiter = inputdelimiter ? inputdelimiter.value : null;
+            
+            if (!fichier) {
+                errorDiv.innerHTML = "Veuillez choisir un fichier pour l'importation";
+                return;
+            }
+            
+            const data = new FormData();
+            data.append('file-path', fichier);
+            data.append('format', format);
+            if (delimiter) {
+                data.append('delimiter', delimiter);
+            } else if(format == "csv") {
+                data.append('delimiter', "csv")
+            }
+            
+            fetch(API_URL + '/import', {
+                method: 'POST',
+                body: data
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la requête HTTP');
+                }
+                return response.json();
+            })
+            .then(responseData => {
+                if (responseData.status == "ok") {
+                    errorDiv.innerHTML = "Importation réussie, retour au menu";
+                    setTimeout(() => {
+                        choiceDiv.style.display = 'block';
+                        importDiv.style.display = 'none';
+                        errorDiv.innerHTML = '';
+                    }, 2000);
+                } else {
+                    errorDiv.innerHTML = "Une erreur est survenue lors de l'importation, vérifiez que le fichier choisi est correct";
+                }
+            })
+            .catch(error => {
+                errorDiv.innerHTML = "Erreur: " + error.message;
+            });
+        });
+        
+        document.getElementById('submit-export').addEventListener('click', function(event) {
+            event.preventDefault(); 
+            
+            const format = document.querySelector('input[name="formatExport"]:checked').value;
+            const name = document.getElementById('exportName').value;
+            
+            if (!name) {
+                errorDiv.innerHTML = "Veuillez entrer un nom de fichier";
+                return;
+            }
+            
+            const data = { format };
+            
+            fetch(API_URL + '/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la requête HTTP');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `${name}.${format === 'text' ? 'txt' : 'csv'}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                setTimeout(() => {
+                    choiceDiv.style.display = 'block';
+                    exportDiv.style.display = 'none';
+                    errorDiv.innerHTML = '';
+                    document.getElementById('exportName').value = '';
+                }, 2000);
+            })
+            .catch(error => {
+                errorDiv.innerHTML = "Erreur: " + error.message;
+            });
+        });
+        
+        document.getElementById('return').addEventListener('click', () => {
+            choiceDiv.style.display = 'block';
+            importDiv.style.display = 'none';
+            errorDiv.innerHTML = '';
+        });
+        
+        document.getElementById('returnE').addEventListener('click', () => {
+            choiceDiv.style.display = 'block';
+            exportDiv.style.display = 'none';
+            errorDiv.innerHTML = '';
+        });
+        
+        verifChoice.addEventListener('click', () => {
+            
+            fetch(API_URL + '/verify', {
+                method: 'GET',
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la requête HTTP');
+                }
+                return response.json();
+            })
+            .then(responseData => {
+                displayVerificationResults(responseData.result);
+            })
+            .catch(error => {
+                errorDiv.innerHTML = "Erreur: " + error.message;
+                errorDiv.style.display ='block'
+            });
+        });
+        
+        function displayVerificationResults(result) {
+            const resultDiv = document.getElementById('debit');
+            resultDiv.innerHTML = '';
+            
+            if (result.errors.includes("Le fichier FEC est correct.")) {
+                resultDiv.innerHTML = `<p class="success">${result.errors.join('<br>')}</p>`;
+                return;
+            }
+            
+            resultDiv.innerHTML = `<p class="error">${result.errors.join('<br>')}</p>`;
+            
+            if (result.linesWithErrors.length > 0) {
+                const table = document.createElement('table');
+                const header = table.insertRow();
+                expectedColumns.forEach(column => {
+                    const cell = header.insertCell();
+                    cell.textContent = column;
+                });
+                header.insertCell().textContent = "Actions";
+                
+                result.linesWithErrors.forEach(({ lineNumber, line, errors }) => {
+                    const row = table.insertRow();
+                    row.classList.add('error-line');
+                    const columns = line.split(';');
+                    
+                    columns.forEach(column => {
+                        const cell = row.insertCell();
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = column;
+                        cell.appendChild(input);
+                    });
+                    
+                    const errorCell = row.insertCell();
+                    errorCell.innerHTML = errors.join('<br>');
+                    const correctButton = document.createElement('button');
+                    correctButton.textContent = 'Corriger';
+                    correctButton.onclick = () => correctLine(row, lineNumber);
+                    errorCell.appendChild(correctButton);
+                });
+                
+                resultDiv.appendChild(table);
+            }
+        }
+        
+        async function correctLine(row, lineNumber) {
+            const inputs = row.querySelectorAll('input');
+            const correctedLine = Array.from(inputs).map(input => input.value).join(';');
+            
+            const response = await fetch('/correct-line', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ lineNumber, correctedLine })
+            });
+            
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                verifyFEC();
+            } else {
+                alert(result.error);
+            }
+        }
+                
+        function toggleDelimiterVisibility() {
+            if (formatImportCsv.checked) {
+                choiceDelimiterImport.style.display = 'none';
+            } else {
+                choiceDelimiterImport.style.display = 'block';
+            }
+        }
+        
+        formatImportCsv.addEventListener('change', toggleDelimiterVisibility);
+        formatImportText.addEventListener('change', toggleDelimiterVisibility);
+        
+        toggleDelimiterVisibility(); 
+
+        
+        
+    </script>
+</body>
+</html>
